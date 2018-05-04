@@ -2,7 +2,9 @@
 title: "Class 9 Unsupervised learning"
 author: "Amanda Alker"
 date: "5/2/2018"
-output: html_document
+output: 
+  html_document: 
+    keep_md: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -225,8 +227,8 @@ table(wisc.pr.hclust.clusters, diagnosis)
 ```
 
 ```{r}
-install.packages("rgl")
-library(rgl)
+#install.packages("rgl")
+#library(rgl)
 ```
 
 ```{r}
