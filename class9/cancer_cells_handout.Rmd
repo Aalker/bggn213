@@ -150,7 +150,7 @@ data.scaled <- scale(wisc.data)
 ```{r}
 #calculate the Euclidean distance
 data.dist <- dist(data.scaled)
-data.dist
+#data.dist
 ```
 
 Plot the hclust
