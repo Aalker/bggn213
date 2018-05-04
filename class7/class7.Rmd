@@ -1,0 +1,177 @@
+---
+title: "Bioinformatics Class7"
+author: "Amanda Alker"
+date: "4/25/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Functions again
+
+We can source any file of R code with the 'source()' function
+```{r}
+source("http://tinyurl.com/rescale-R")
+```
+
+Lets make sure things are here
+
+```{r}
+ls()
+```
+
+check our 'rescale()' function is working
+
+```{r}
+rescale(1:10)
+```
+
+```{r, eval=FALSE}
+rescale( c(1:10, "string") )
+```
+
+Let's check if 'rescale2()' does any better
+```{r, eval=FALSE}
+rescale2( c(1:10, "string") )
+```
+
+## Function for finding missing values in two datasets
+
+Write a 'both_na() function to do this
+```{r}
+x <- c( 1, 2, NA, 3, NA)
+y <- c(NA, 3, NA, 3, 4)
+
+is.na(x)
+
+
+```
+
+provides where the NAs are located 
+```{r}
+which(is.na(x))
+```
+
+provides how many NAs there are 
+```{r}
+sum( is.na(x))
+```
+
+This will print these vectors seperately
+```{r}
+is.na(x)
+is.na(y)
+```
+
+we can use & to combine the vectors
+```{r}
+sum(is.na(x) & is.na(y))
+```
+
+now we can make our function
+```{r}
+both_na <-function(x, y) {
+  sum( is.na(x) & is.na(y))
+}
+```
+
+test it
+```{r}
+both_na(x, y)
+```
+
+```{r}
+x <- c(NA, NA, NA)
+y1 <- c( 1, NA, NA)
+y2 <- c( 1, NA, NA, NA)
+
+both_na(x, y1)
+both_na(x, y2)
+```
+
+```{r}
+both_na2(x, y2)
+```
+
+```{r}
+x <- c( 1, 2, NA, 3, NA)
+y <- c(NA, 3, NA, 3, 4)
+
+ans <-both_na3(x, y)
+```
+
+```{r}
+ans$which
+```
+
+##One more example- actually useful
+```{r}
+x <- df1$IDs
+y <- df2$IDs
+
+x
+y
+```
+
+We can try the 'intersect()' function and the '%in%' functions
+
+```{r}
+intersect(x, y)
+x %in% y
+y %in% x
+
+```
+
+we can use the logical output in '%in% to get at our matching data..
+
+```{r}
+x[x %in% y]
+y[y %in% x]
+```
+
+
+Lets put these together as columns of a matrix
+
+```{r}
+cbind(x[x %in% y], y[y %in% x])
+```
+
+```{r}
+cbind( c("hello", "Help"), c("Please", "Me"))
+rbind( c("hello", "Help"), c("Please", "Me"))
+```
+
+Now we can make our first function for this
+```{r}
+gene_intersect <- function(x, y) {
+cbind(x[x %in% y], y[y %in% x])
+}
+```
+
+Test it on x and y
+```{r}
+gene_intersect(x, y)
+```
+
+Lets change to take input data frames rather than vectors
+```{r}
+gene_intersect2(df1, df2) 
+```
+
+Looks good, this is our skateboard!
+
+Add some flexibility for col name to match by... 
+```{r}
+gene_intersect3(df1, df2)
+```
+
+Make it look nicer- assign variables to the outputs- gene_intersect 4
+
+Lets use the merge()function for this...
+```{r}
+merge(df1, df2, by="IDs")
+```
+
+
