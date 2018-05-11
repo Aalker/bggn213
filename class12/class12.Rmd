@@ -48,3 +48,30 @@ write.pdb(protein, "1hsg_protein.pdb")
 ```
 
 
+## Convert the docking results from pdbqt file to .pdb in 'Bio3d'
+
+```{r}
+res <- read.pdb("all.pdbqt", multi = TRUE)
+
+write.pdb(res, "results.pdb")
+
+```
+
+Compare our results to Merk Co Crystal structure
+```{r}
+ori <- read.pdb("ligand.pdbqt")
+```
+
+```{r}
+rmsd(ori, res)
+```
+
+>**Q6.** RMSD based on non hydrogen atoms 
+
+```{r}
+#Get protein (PDB, "protein")
+inds <- atom.select(ori, "noh")
+
+rmsd(ori$xyz[,inds$xyz], res$xyz[ , inds$xyz])
+```
+
