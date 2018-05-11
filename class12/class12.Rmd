@@ -1,0 +1,50 @@
+---
+title: "Bioinformatics Class 12"
+author: "Amanda Alker"
+date: "5/11/2018"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Call the package
+```{r}
+library(bio3d)
+```
+
+# Setup HIV-Pr for docking study
+
+Get the protein
+```{r}
+file.name <- get.pdb("1hsg")
+```
+
+Read this file in and trim out the protein and small molecule ligand from everything else 
+
+```{r}
+hiv <- read.pdb(file.name)
+#./ means that it lives locally
+```
+
+```{r}
+ligand <- trim.pdb(hiv, "ligand")
+ligand
+```
+
+Lets do the same for the protein
+Extract protein
+
+```{r}
+protein <- trim.pdb(hiv, "protein")
+protein
+```
+
+Write them up
+```{r}
+write.pdb(ligand, "1hsg_ligand.pdb")
+write.pdb(protein, "1hsg_protein.pdb")
+```
+
+
