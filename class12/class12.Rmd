@@ -75,3 +75,4 @@ inds <- atom.select(ori, "noh")
 rmsd(ori$xyz[,inds$xyz], res$xyz[ , inds$xyz])
 ```
 
+keep going in handout to check out the cool pdb capabilities, make a PCA, and superimpose the proteins on tope of each other 
