@@ -1,0 +1,93 @@
+---
+title: "Bioinformatics Class 13 Genomics"
+author: "Amanda Alker"
+date: "5/16/2018"
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1000 Genomes Project data
+
+Read 1000 genome data for MXL dataset 
+
+```{r}
+genotype <- read.csv("SampleGenotypes-Homo_sapiens_Variation_Sample_rs12936231.csv")
+```
+
+Looks Good!
+
+```{r}
+table(genotype[, 2]) / nrow(genotype) * 100
+#Access the second column
+#Put these characterizations into a table 
+#/row genotype creates the distribution
+
+```
+
+## Base quality scores from fastqsanger
+
+
+```{r}
+#install.packages("gtools")
+```
+
+```{r}
+
+library(seqinr)
+library(gtools)
+phred <- asc( s2c("DDDDCDEDCDDDDBBDDDCC@") ) - 33
+phred 
+```
+
+## RNA-seq analysis 
+
+Assessing genetic differences on a population scale. We want to find whether there is any association of the 4 asthma associated SNPs on ORMDL3 page 
+
+```{r}
+geno <- read.table("rs8067378_ENSG00000172057.6.txt")
+```
+
+What does this data look like?
+
+```{r}
+#numeric summary
+summary(geno)
+```
+
+But is it different based on genotype? 
+
+```{r}
+summary(geno$exp[geno$geno == "A/A"])
+#Gives TRUE/FALSE of G/G
+summary(geno$exp[geno$geno == "A/G"])
+summary(geno$exp[geno$geno == "G/G"])
+```
+
+ALWAYS PLOT THE DATA (boxplot)
+
+```{r}
+boxplot(exp ~ geno ,data = geno, notch = TRUE)
+#formula arguments needed where y~grp
+#y is numeric vector of data value (expression)
+#grp split into groups (genotypes )
+#notch= TRUE do they overlap?
+
+```
+
+```{r}
+library("ggplot2")
+ggplot(geno, aes(geno, exp)) + geom_boxplot()
+#ggplot (df, aes) + geom_boxplot()
+# + geom_jitter plots the points as well
+#alpha = 0.2 creates transparency of boxes and 
+```
+
+```{r}
+ggplot(geno, aes(exp, fill = geno)) + geom_density (alpha = 0.2)
+```
+
