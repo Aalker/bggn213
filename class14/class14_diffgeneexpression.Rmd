@@ -1,0 +1,356 @@
+---
+title: "Bioinformatics class 14 differential gene expression"
+author: "Amanda Alker"
+date: "5/18/2018"
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Make sure we can download DESeq2
+```{r}
+#see the detailed installation handout on the website
+library(BiocInstaller)
+#biocLite("DESeq2")
+```
+
+
+Read the data into R
+
+```{r}
+#stringsAsFactors makes catagorical factors but this program doesnt like them (ie treat as normal vector)
+metadata <-read.csv("data/airway_metadata.csv", stringsAsFactors = FALSE)
+counts <- read.csv("data/airway_scaledcounts.csv", stringsAsFactors = FALSE)
+```
+
+
+Let's look at them
+
+```{r}
+head(counts)
+```
+
+```{r}
+#GEO collection is like the ENTREZ or SRA of NCBI
+#check to make sure the IDs are distributed properly amongst row and columns 
+head(metadata)
+```
+
+
+```{r}
+colnames(counts)[-1] == metadata$id
+```
+
+## Let's start to mess with differential gene expression (this isnt the real workflow)
+
+```{r}
+View(metadata)
+```
+
+```{r}
+
+control <- metadata[metadata [, "dex"] =="control", ]
+control
+#check the logic to make sure that the metadata corresponds to the rows
+#metadata[ with the inside function] will give the controls only
+
+control.mean <- rowSums( counts[ ,control$id] )/4
+#control$id will give us just the counts for the control ids
+
+names(control.mean) <- counts$ensgene
+#put the ids back on to make sure we dont get confused
+```
+
+How do we make this more robust?
+
+```{r}
+#get rid of the 4, because it is hardcoded
+#nrow(control) should be substituted for 4
+control.mean <- rowSums( counts[ ,control$id] )/nrow(control)
+head(control.mean)
+```
+
+Now lets do it again with the treated...
+
+```{r}
+treated <- metadata[metadata [, "dex"] =="treated", ]
+control
+
+treated.mean <- rowSums( counts[ ,treated$id] )/nrow(treated)
+
+names(treated.mean) <- counts$ensgene
+head(treated.mean)
+```
+
+```{r}
+meancounts <- data.frame(control.mean, treated.mean)
+head(meancounts)
+```
+
+```{r}
+colSums(meancounts)
+```
+
+```{r}
+plot(meancounts$control, meancounts$treated)
+#notice all of the points are on top of each other. Normally, we fix this by plotting on a log scale
+```
+
+```{r}
+plot(meancounts$control, meancounts$treated, log = "xy")
+
+```
+
+```{r}
+#make the log2foldchange in a new column
+meancounts$log2fc <- log2(meancounts[,"treated.mean"]/meancounts[,"control.mean"])
+head(meancounts)
+```
+
+We need to filter out the zeros because they are messing with the log plotting of our data
+
+practice making a matrix to play with 
+```{r}
+x <- matrix(1:10, ncol = 2, byrow = TRUE)
+
+x[5,2] <- 0
+x
+x == 0
+which(x==0)
+#want it to return row and column
+which(x ==0, arr.ind = TRUE)
+
+```
+
+
+```{r}
+zero.vals <- which(meancounts[,1:2]== 0, arr.ind = TRUE)
+head(zero.vals)
+```
+
+Now we need to remove the zero count containing genes 
+
+```{r}
+to.rm <- unique(zero.vals[,1])
+mycounts <- meancounts[-to.rm,]
+head(mycounts)
+```
+
+Differentially expressed rule of thumb is logfold change of 2
+
+```{r}
+up.ind <- mycounts$log2fc > 2
+down.ind <- mycounts$log2fc < -2
+head(up.ind)
+#this gives logical responses
+#use sum to give how many are differentially expressed
+```
+
+```{r}
+paste("Up:", sum(up.ind))
+paste("Down:", sum(down.ind))
+#use the paste function to have the names of your choice printed out
+```
+
+```{r}
+anno <- read.csv("data/annotables_grch38.csv")
+head(anno)
+```
+
+Use the merge function
+```{r}
+results <- merge(mycounts, anno, by.x = "row.names", by.y = "ensgene")
+head(results)
+#works with a table of annotations that you want to go with
+```
+
+```{r}
+library("AnnotationDbi")
+#biocLite("org.Hs.eg.db")
+library("org.Hs.eg.db")
+```
+
+```{r}
+columns(org.Hs.eg.db)
+```
+
+```{r}
+mycounts$symbol <- mapIds(org.Hs.eg.db,
+                keys=row.names(mycounts),
+                     column="SYMBOL",
+                     keytype="ENSEMBL",
+                     multiVals="first")
+#mapIds add individual columns to our results table 
+head(mycounts)
+```
+
+
+
+```{r}
+library("DESeq2")
+citation("DESeq2")
+```
+
+```{r}
+dds <- DESeqDataSetFromMatrix(countData=counts, 
+                              colData=metadata, 
+                              design=~dex, 
+                              tidy=TRUE)
+dds
+```
+
+To get the results
+
+```{r}
+dds <- DESeq(dds)
+```
+
+```{r}
+res <- results(dds)
+res
+```
+
+```{r}
+summary(res)
+```
+
+Order the results by p-value
+
+```{r}
+resOrdered <- res[order(res$pvalue), ]
+head(resOrdered)
+#need to rearrange the whole dataframe
+```
+
+```{r}
+res05 <- results(dds, alpha=0.05)
+summary(res05)
+#change the default cutoff value from 0.1 to 0.5 (p-value)
+```
+
+```{r}
+resSig05 <- subset(as.data.frame(res), padj < 0.05)
+nrow(resSig05)
+#use the subset() function to access a smaller part of the dataset
+```
+
+```{r}
+resSig01 <- subset(as.data.frame(res), padj < 0.01)
+nrow(resSig01)
+```
+
+Add annotation to res01 results dataframe
+
+```{r}
+resSig01$symbol <- mapIds(org.Hs.eg.db,
+                keys=row.names(resSig01),
+                column = "SYMBOL", 
+                keytype= "ENSEMBL", 
+                multiVals = "first")
+
+```
+
+Arrange by adjusted p-value
+
+```{r}
+ord <- order( resSig01$padj )
+#View(res01[ord,])
+head(resSig01[ord,])
+```
+
+Write this to a .csv file
+
+```{r}
+write.csv(resSig01[ord,], "signif01_results.csv")
+```
+
+##Data Visualization
+
+Get the gene ID for the "CRISPLD2" gene
+```{r}
+index <- grep("CRISPLD2", resSig01$symbol)
+resSig01 [index, ]
+```
+
+```{r}
+rownames(resSig01[index, ])
+```
+
+Now lets plot the counts
+
+```{r}
+plotCounts(dds, gene="ENSG00000103196", intgroup="dex")
+```
+
+```{r}
+#Return the data instead of the counts
+d <- plotCounts(dds, gene = "ENSG00000103196", intgroup = "dex", returnData = TRUE)
+head(d)
+```
+
+Now from this object returned, we can plot a boxplot
+```{r}
+boxplot(count ~ dex, data = d)
+```
+
+```{r}
+library(ggplot2)
+ggplot(d, aes(dex, count)) + geom_boxplot(aes(fill=dex)) + scale_y_log10() + ggtitle("CRISPLD2")
+```
+
+## MA and Volcano plots 
+
+Add a column called sig to our rull "res" that calls true if padj <0.05 and FALSE if not
+```{r}
+res$sig <- res$padj<0.05
+table(res$sig)
+```
+
+```{r}
+sum(is.na(res$sig))
+```
+
+MA plot shows average expression on the x-axis and log fold change on the y-axis 
+Volcano plot shows the log fold change on the X-axis and the -log10 of the p-value on the Y-axis (the more significant the p-value, the larger the -log10 value will be)
+
+In built MA- plot
+```{r}
+plotMA(res, ylim = c(-2,2))
+```
+
+Remove the noise associated with the log2 fold changes from low gene counts
+
+```{r}
+resLFC <- lfcShrink(dds, coef = 2)
+resLFC
+plotMA(resLFC, ylim = c(-2,2))
+```
+
+Make a volcano plot
+```{r}
+ggplot(as.data.frame(res), aes(log2FoldChange, -1*log10(pvalue), col= sig )) + geom_point() + ggtitle("Volcano plot")
+```
+
+Log Transformation of results is needed for heatmaps, PCA, or clustering
+
+```{r}
+#variance stabilizing transformation (VST)
+vsdata <- vst(dds, blind=FALSE)
+```
+
+##PCA 
+
+```{r}
+plotPCA(vsdata, intgroup = "dex")
+```
+
+Now show the session information
+
+```{r}
+sessionInfo()
+```
+
