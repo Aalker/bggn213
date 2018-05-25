@@ -1,0 +1,252 @@
+---
+title: "Bioinformatics Class 15 Gene Annotation"
+author: "Amanda Alker"
+date: "5/23/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load in our data 
+
+```{r, echo= FALSE}
+library(DESeq2)
+```
+
+```{r}
+metaFile <- "GSE37704_metadata.csv"
+countFile <- "GSE37704_featurecounts.csv"
+
+#Import metadata and take a peak
+colData = read.csv(metaFile, row.names = 1)
+head(colData)
+```
+
+```{r}
+#Import countdata
+countData = read.csv (countFile, row.names = 1)
+head(countData)
+```
+
+Don't forget that the countData and colData files need to match up, so we should remove the first column in countData
+
+```{r}
+#Remove the first $lenght column
+countData <- as.matrix(countData[,-1])
+head(countData)
+```
+
+Looks better, but we need to remove all of the zeros 
+```{r}
+#Filter count data where you have 0 read count across all samples
+countData = countData[rowSums(countData) > 1, ]
+head(countData)
+```
+
+Now lets setup the DESeqDataSet
+
+```{r}
+dds = DESeqDataSetFromMatrix(countData= countData, 
+                             colData = colData,
+                             design = ~condition)
+
+dds = DESeq (dds)
+```
+
+A new DESeqDataSet is returned with all of the results. Lets extract those. 
+
+```{r}
+res <- results(dds)
+res
+```
+
+But this is not a standard R data.frame, it has extra metadata
+```{r}
+mcols(res, use.names = TRUE)
+```
+
+Let's summarize these results
+```{r}
+summary(res)
+```
+
+Too many genes here so lets increase our threshhold of log2 fold change and decrease our FDR *p* value
+
+```{r}
+#look out for the arguments lfcThreshold and alpha (False discovery rate)
+resSig <- results(dds, lfcThreshold = 2, alpha = 0.05)
+summary(resSig)
+```
+
+You could also use the table() function on the output of results
+
+```{r}
+table(resSig$padj < 0.05, resSig$log2FoldChange > 2)
+```
+
+Watch out for what just putting the p-value would do
+```{r}
+table(resSig$pvalue < 0.05)
+```
+
+DESeq2 uses the BH adjustment as implemented in the p.adjust() function- considers false discovery rate
+
+```{r}
+table(resSig$padj < 0.05)
+```
+
+```{r}
+# Make a new results object as a filtered significant value 
+#heads up, you are overwriting your variable
+resSig <- subset (resSig, padj < 0.05)
+
+#Print the first 10 strongest DOWN genes
+ord.down <- order(resSig$log2FoldChange, decreasing = TRUE)
+head(resSig[ord.down, ], 10)
+```
+
+## Annotating our genes and mapping to Entrez IDs 
+
+```{r}
+library(AnnotationDbi)
+library(org.Hs.eg.db)
+
+columns(org.Hs.eg.db)
+```
+
+```{r}
+res$symbol = mapIds(org.Hs.eg.db,
+                    keys=row.names(res), 
+                    column="SYMBOL",
+                    keytype="ENSEMBL",
+                    multiVals="first")
+
+res$entrez = mapIds(org.Hs.eg.db,
+                    keys=row.names(res), 
+                    column="ENTREZID",
+                    keytype="ENSEMBL",
+                    multiVals="first")
+
+res$name =   mapIds(org.Hs.eg.db,
+                    keys=row.names(res), 
+                    column="GENENAME",
+                    keytype="ENSEMBL",
+                    multiVals="first")
+
+head(res, 10)
+                  
+``` 
+
+## Pathway Analysis 
+
+KEGG Pathways 
+```{r}
+source("http://bioconductor.org/biocLite.R")
+biocLite( c("pathview", "gage", "gageData"))
+```
+
+```{r}
+library(pathview)
+```
+
+```{r}
+library(gage)
+library(gageData)
+
+data(kegg.sets.hs)
+data(sigmet.idx.hs)
+
+kegg.sets.hs = kegg.sets.hs[sigmet.idx.hs]
+head(kegg.sets.hs, 3)
+```
+
+```{r}
+foldchanges = res$log2FoldChange
+names(foldchanges) = res$entrez
+head(foldchanges)
+```
+
+```{r}
+#Get the results
+keggres = gage(foldchanges, gsets= kegg.sets.hs, same.dir = TRUE)
+```
+
+```{r}
+attributes(keggres)
+```
+
+```{r}
+head(keggres$greater)
+```
+
+```{r}
+head(keggres$less)
+```
+
+```{r}
+lapply(keggres, head)
+```
+
+Top 5 upregulated pathways 
+```{r}
+## Sanity check displaying all pathways data
+pathways = data.frame(id=rownames(keggres$greater), keggres$greater)
+head(pathways)
+```
+
+Now lets use the pathview() function from the pathview package to make a pathway plot with the results shown in color
+
+```{r}
+pathview(gene.data = foldchanges, pathway.id = "hsa04110")
+```
+
+PDF output of the same data 
+```{r}
+pathview(gene.data=foldchanges, pathway.id="hsa04110", kegg.native=FALSE)
+
+```
+
+This code "![](hsa04110.pathview.png)" adds the image into the knit document:
+![](hsa04110.pathview.png)
+
+
+```{r}
+## Focus on top 5 upregulated pathways here for demo purposes only
+keggrespathways <- rownames(keggres$greater)[1:5]
+
+# Extract the IDs part of each string
+keggresids = substr(keggrespathways, start=1, stop=8)
+keggresids
+```
+
+Lets draw plots all of the top 5 pathways 
+```{r}
+pathview(gene.data=foldchanges, pathway.id=keggresids, species="hsa")
+```
+
+## Gene Ontology
+
+```{r}
+data(go.sets.hs)
+data(go.subs.hs)
+gobpsets = go.sets.hs[go.subs.hs$BP]
+
+gobpres = gage(foldchanges, gsets=gobpsets, same.dir=TRUE)
+
+lapply(gobpres, head)
+```
+
+## Reactome Pathway Analysis 
+
+```{r}
+sig_genes <- res[res$padj <= 0.05 & !is.na(res$padj), "symbol"]
+print(paste("Total number of significant genes:", length(sig_genes)))
+
+```
+
+```{r}
+write.table(sig_genes, file="significant_genes.txt", row.names=FALSE, col.names=FALSE, quote=FALSE)
+```
+
