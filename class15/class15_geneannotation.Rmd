@@ -2,7 +2,9 @@
 title: "Bioinformatics Class 15 Gene Annotation"
 author: "Amanda Alker"
 date: "5/23/2018"
-output: html_document
+output: 
+  html_document: 
+    keep_md: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -11,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Load in our data 
 
-```{r, echo= FALSE}
+```{r, warnings = FALSE}
 library(DESeq2)
 ```
 
@@ -142,7 +144,7 @@ head(res, 10)
 ## Pathway Analysis 
 
 KEGG Pathways 
-```{r}
+```{r, warnings = FALSE}
 source("http://bioconductor.org/biocLite.R")
 biocLite( c("pathview", "gage", "gageData"))
 ```
@@ -198,7 +200,7 @@ head(pathways)
 
 Now lets use the pathview() function from the pathview package to make a pathway plot with the results shown in color
 
-```{r}
+```{r, warning = FALSE}
 pathview(gene.data = foldchanges, pathway.id = "hsa04110")
 ```
 
