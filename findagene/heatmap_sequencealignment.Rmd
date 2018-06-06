@@ -1,0 +1,214 @@
+---
+title: "Find a Gene Assignment"
+author: "Amanda Alker"
+date: "5/31/2018"
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Making a heatmap with sequence similarity
+
+I've chosen the protein 'WP_086931707' as the top hit for my gene of interest. I searched for similar sequences using BLASTp with a nr database. A multiple sequence alignment was performed using MUSCLE, and a phylogenetic tree was created using a distance-matrix.
+
+```{r}
+library(bio3d)
+```
+
+Let's start by importing the data
+
+```{r}
+alignment <- read.fasta("agarilytica_alignment.fa.txt")
+#import the data
+```
+
+If we want to plot it and check it out really quick...
+
+```{r}
+plot.fasta(alignment)
+```
+
+Awesome, so theres some conservation! Let's make this quantifiable. 
+
+```{r}
+seq_id_matr <- seqidentity(alignment)
+seq_id_matr
+```
+
+##Let's try to plot it as a heatmap
+
+```{r}
+library(RColorBrewer)
+```
+
+First, let's use the function we worked on in class 'map.colors()'
+
+```{r}
+x <- as.matrix(seq_id_matr)
+x
+```
+
+```{r}
+# map.colors <- function (x, 
+#                          high.low = range(x) , 
+#                          palette = heat.colors(100)) {
+#   
+#   #determine where in the 'high.low' range our values of 'x' lie
+#   percent <- ((x - high.low[1]) / (high.low[2] - high.low[1]))
+#   
+#   #Where in the 'palette' vector of colors is this 'percent' 
+#   # note catch for 0 percent values to 1
+#   index <- round ((length(palette) - 1) * percent) + 1
+#   
+#   return (palette[index])
+# }
+# mycols <-map.colors(x)
+# #make my colors object, 'mycols' with your data as the palette input
+# mycols
+```
+
+
+```{r}
+#head(col_breaks)
+```
+
+
+```{r}
+#my_palette <- colorRampPalette(c(rgb(0,0,1,1), rgb(0,0,1,0)), alpha = TRUE)(16)
+#col_breaks = c(seq(0, 0.53,length=8),  # for blue
+#  seq(0.90,1,length=1))           # for cyan
+```
+
+```{r}
+#quantile.range <- quantile(seq_id_matr, probs = seq(0, 1, 0.01))
+#palette.breaks <- seq(quantile.range["5%"], quantile.range["95%"], 0.01)
+ 
+# use http://colorbrewer2.org/ to find optimal divergent color palette (or set own)
+#color.palette  <- colorRampPalette(c("#FC8D59", "#FFFFBF", "#91CF60"))(length(palette.breaks) - 1)
+```
+
+```{r}
+my_palette <- colorRampPalette(c("yellow", "orange", "red"))(n = 1000)
+col_breaks = c(seq(0, 0.100,length=200),  # for yellow
+               seq(0.101,.499,length=800), #for orange
+               seq(.500, 1, length= 1)) #for red
+#created a palette using colorRampPalette
+#made color breaks based on the way I wanted to represent the colors
+```
+
+
+```{r}
+heatmap(seq_id_matr, scale = "column", col = my_palette, margins = c(10, 10), cexRow = .7, cexCol = .7)
+#Need to assign colors, add labels- maybe a column with color gradient?
+```
+
+```{r}
+# png("~/Desktop/bootcamp/R/bggn213_github/findagene/heatmap.png",    # create PNG for the heat map        
+# width = 5*300,        # 5 x 300 pixels
+# height = 5*300,
+# res = 300,            # 300 pixels per inch
+# pointsize = 8)        # smaller font size
+```
+
+##Search for protein in PDB
+
+```{r}
+consenseq <- consensus(alignment, cutoff = 0.6)
+#Get the consensus sequence from the alignment
+
+```
+
+```{r}
+# Plot residue frequency matrix
+png(filename = "freq.png", width = 1500, height = 780)
+col <- mono.colors(32)
+aa  <- rev(rownames(consenseq$freq))
+```
+
+```{r}
+image(x=1:ncol(consenseq$freq),
+      y=1:nrow(consenseq$freq),
+      z=as.matrix(rev(as.data.frame(t(consenseq$freq)))),
+      col=col, yaxt="n", xaxt="n",
+      xlab="Alignment Position", ylab="Residue Type")
+```
+
+Let's determine the most similar sequence for the consensus
+
+```{r}
+rowSums(seq_id_matr)
+```
+
+Looks like we will be using Agarlytica
+
+Lets get the sequence 
+```{r}
+fasta <- get.seq("WP_086931707", outfile = "seqs.fasta", db = "nr")
+fasta
+```
+
+Retrieve the alignment sequence
+```{r}
+pdbseq <- fasta$ali
+pdbseq
+```
+
+Now to run the blast against the pdb database
+
+```{r}
+pdb_hits <- blast.pdb(pdbseq[1,], database = "pdb")
+```
+
+Lets put this into a table, so we can start sorting through it 
+
+```{r}
+pdb_hit_table <- pdb_hits$hit.tbl
+pdb_hit_table
+```
+
+
+
+```{r}
+plot.blast(pdb_hits)
+```
+
+Why dont we annotate the IDs to see if the hits are interesting to us
+
+```{r}
+pdb_annotation_all <- pdb.annotate(pdb_hit_table$subjectids, anno.terms = c("structureId", "experimentalTechnique", "resolution", "source"), unique = TRUE)
+```
+
+Lets organize this data
+
+```{r}
+#3 unique hits 
+#WARNING: Hits are not good for structure
+unique_hits <- pdb_annotation_all[c(1,2,10), ]
+unique_hits
+```
+
+Now lets clean up our 'pdb_hit_table' 
+```{r}
+pdb_trimmed_hit_table <- pdb_hit_table[c(1,2,10), c("identity", "evalue")]
+pdb_trimmed_hit_table
+```
+
+```{r}
+unique_hits$evalue <- pdb_trimmed_hit_table$evalue
+unique_hits$identity <- pdb_trimmed_hit_table$identity
+unique_hits
+
+```
+
+```{r}
+write.table(unique_hits, file = "pdb_results_table")
+```
+
+```{r}
+pdb <- get.pdb("4Q2W")
+```
+

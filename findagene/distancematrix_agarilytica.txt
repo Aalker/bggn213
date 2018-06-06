@@ -1,0 +1,9 @@
+     8
+Flavobacterium_pectinovorum      0.000  0.798  0.739  0.764  0.763  0.753  0.728  0.742 
+Chromobacterium_violaceum        0.798  0.000  0.751  0.729  0.717  0.737  0.735  0.722 
+Pseudoalteromonas_luteoviolacea  0.739  0.751  0.000  0.654  0.669  0.655  0.630  0.650 
+Vibrio_quintilis                 0.764  0.729  0.654  0.000  0.481  0.631  0.582  0.601 
+Vibrio_aerogenes                 0.763  0.717  0.669  0.481  0.000  0.633  0.610  0.615 
+Algicola_sagamiensis             0.753  0.737  0.655  0.631  0.633  0.000  0.577  0.612 
+Agarilytica_rhodophyticola       0.728  0.735  0.630  0.582  0.610  0.577  0.000  0.563 
+Gynuella_sunshinyii              0.742  0.722  0.650  0.601  0.615  0.612  0.563  0.000 
