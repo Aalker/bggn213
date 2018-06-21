@@ -48,8 +48,17 @@ entrez_db_searchable("sra")
 ```
 
 
+Let's load in the test data.. 
+
+```{r}
+srr_list <- read.table("test.txt")
+srr_list
+str(srr_list)
+```
+
 
 Based on the Ids we have, it looks like we will have to find 'Biosample' Ids from the SRA run Ids. To do that, we will need to look up the uids for each database and convert them. 
+
 
 
 #Convert the Ids
@@ -62,7 +71,7 @@ First, let's look for the uids that we want. This is just a practice with one.
 ```{r}
 #make the 'uid' object to find the specific run ids in the sra database
 
-uid <- esearch("SRR3719567", db = "sra")
+uid <- esearch(srr_list$V1, db = "sra")
 uid
 
 #careful! These search queries are hard-coded, so we need to figure out a better way to have inputs for the function
@@ -103,9 +112,10 @@ Great! Now let's try to find the summary page of the biosample uid
 
 
 ```{r}
+#getNodeSet
 biosample_data <- esummary(biosample_uid, db = "biosample")
+biosample_data
 ```
-
 
 
 ITS IN THERE! Now we just have to parse it out!
@@ -128,9 +138,10 @@ Okay, we're on to something, but it looks like the SampleData column did not par
 
 
 ```{r}
-parsed_biosample_sampledata <- xmlParseString(parsed_biosample_full$SampleData)
+parsed_biosample_sampledata <- parsed_biosample_full$SampleData
 parsed_biosample_sampledata
 ```
+
 
 
 
@@ -143,9 +154,9 @@ https://www.stat.berkeley.edu/~statcur/Workshop2/Presentations/XML.pdf
 
 
 ```{r}
-top <- xmlRoot(parsed_biosample_sampledata)
-xmlName(top)
-str(parsed_biosample_sampledata)
+#top <- xmlRoot(parsed_biosample_sampledata)
+#top
+#str(parsed_biosample_sampledata)
 ```
 
 
@@ -153,7 +164,7 @@ Find the header
 
 
 ```{r}
-names(top)
+#names(top)
 ```
 
 
@@ -161,18 +172,18 @@ Give the names of the child nodes of this root
 
 
 ```{r}
-names( top[[1]])
+#names( top[[1]])
 ```
 
 
 ```{r}
-str( top [[1]])
+#str( top [[1]])
 ```
 
 
 ```{r}
-biosample_attributes <- top[[1]] [["Attributes"]]
-biosample_attributes
+#biosample_attributes <- top[[1]] [["Attributes"]]
+#biosample_attributes
 ```
 
 
@@ -181,18 +192,12 @@ This is what we are looking for! Except, here is where it is getting a little tr
 
 
 
-```{r}
-parse_sampledata <- biosample_attributes["//lat_lon"]
-parse_sampledata
-```
-
-
 It looks like the 'readHTMLList()' function might be able to help us out here.
 
 
 ```{r}
-biosample_parsed <- readHTMLList(biosample_attributes)
-biosample_parsed
+#biosample_parsed <- readHTMLList(biosample_attributes)
+#biosample_parsed
 ```
 
 
@@ -202,15 +207,15 @@ We got it out! Now lets try to put it into a data frame
 
 
 ```{r}
-biosample_df <- as.data.frame(biosample_parsed)
-biosample_df
+#biosample_df <- as.data.frame(biosample_parsed)
+#biosample_df
 ```
 
 
 
 ```{r}
-lat_long <- biosample_df[4,]
-lat_long
+#lat_long <- biosample_df[4,]
+#lat_long
 ```
 
 
@@ -219,15 +224,15 @@ This is the specific data that we are interested in. But is all of the 'Attribut
 
 ```{r}
 #Name a rows vector for the dataframe
-rows <- c("Collection date", "Host", "Geographic location", "Latitude and longitude", "Isolation source")
-rows
+#rows <- c("Collection date", "Host", "Geographic location", "Latitude and longitude", "Isolation source")
+#rows
 ```
 
 
 
 ```{r}
-row.names(biosample_df)<- rows
-biosample_df
+#row.names(biosample_df)<- rows
+#biosample_df
 
 #column.names(biosample_df)<- 
 #we should try to make the column names the same as the SRA ID that we are first searching with.  
