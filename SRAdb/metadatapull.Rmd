@@ -1,0 +1,238 @@
+---
+title: "Getting Latitude and Longitude with Reutils"
+author: "Amanda Alker"
+date: "6/19/2018"
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+#Start with getting the right IDs and Search Queries
+
+
+```{r}
+#load the package
+library(rentrez)
+#This allows you to check out the databases and fields that you want to search
+library(reutils)
+#This is where the functions for getting db summaries and crosslinking the IDs are found
+library(XML)
+library(xml2)
+#These will help you parse the output
+```
+
+
+Check out the Searchable space...
+
+
+```{r}
+#Gives the list of searchable databases
+entrez_dbs()
+```
+
+
+
+These are the searchable fields within the database of interest. If anything, perform the search with one example on the web interface to see where you need to be looking.
+
+
+
+```{r}
+#Gives the list of searchable terms within database 'sra'
+
+entrez_db_searchable("sra")
+```
+
+
+
+Based on the Ids we have, it looks like we will have to find 'Biosample' Ids from the SRA run Ids. To do that, we will need to look up the uids for each database and convert them. 
+
+
+#Convert the Ids
+
+
+First, let's look for the uids that we want. This is just a practice with one.
+
+
+
+```{r}
+#make the 'uid' object to find the specific run ids in the sra database
+
+uid <- esearch("SRR3719567", db = "sra")
+uid
+
+#careful! These search queries are hard-coded, so we need to figure out a better way to have inputs for the function
+```
+
+
+
+So it looks like we got something out as a uid. Go and check it online to make sure you are getting the correct uid out..... it works!
+
+
+
+```{r}
+#find 'sra uid' from the SRA run id
+sra_uid <- elink(uid, dbFrom = "sra", dbTo = "biosample" )
+sra_uid
+```
+
+
+
+So now lets convert the sra_uid to the biosample_uid. Then let's double check that the right biosample_uid is coming up too. 
+
+
+
+
+```{r}
+#Reveal the biosample_uid that will be used to access the attribute metadata
+biosample_uid <- linkset(sra_uid)
+biosample_uid
+```
+
+
+
+Great! Now let's try to find the summary page of the biosample uid
+
+
+#Fetch the summary data 
+
+
+
+```{r}
+biosample_data <- esummary(biosample_uid, db = "biosample")
+```
+
+
+
+ITS IN THERE! Now we just have to parse it out!
+
+
+
+##Parsing the data out of XML
+
+
+
+```{r}
+parsed_biosample_full <- content(biosample_data, "parsed")
+View(parsed_biosample_full)
+```
+
+
+
+Okay, we're on to something, but it looks like the SampleData column did not parse out all of the way. Let's keep on working on it.
+
+
+
+```{r}
+parsed_biosample_sampledata <- xmlParseString(parsed_biosample_full$SampleData)
+parsed_biosample_sampledata
+```
+
+
+
+Looks like it's not going to be the easiest time parsing and orienting the data. I found a tutorial online for this....
+
+
+
+https://www.stat.berkeley.edu/~statcur/Workshop2/Presentations/XML.pdf
+
+
+
+```{r}
+top <- xmlRoot(parsed_biosample_sampledata)
+xmlName(top)
+str(parsed_biosample_sampledata)
+```
+
+
+Find the header 
+
+
+```{r}
+names(top)
+```
+
+
+Give the names of the child nodes of this root
+
+
+```{r}
+names( top[[1]])
+```
+
+
+```{r}
+str( top [[1]])
+```
+
+
+```{r}
+biosample_attributes <- top[[1]] [["Attributes"]]
+biosample_attributes
+```
+
+
+
+This is what we are looking for! Except, here is where it is getting a little tricky. I want to be able to specifically take out the latitude and longitude, but it seems that the "Attributes" column is in a weird class of XML that is not as accessible. We may need to get creative as to how we will extract the values. Perhaps a **'grep()'** function?
+
+
+
+```{r}
+parse_sampledata <- biosample_attributes["//lat_lon"]
+parse_sampledata
+```
+
+
+It looks like the 'readHTMLList()' function might be able to help us out here.
+
+
+```{r}
+biosample_parsed <- readHTMLList(biosample_attributes)
+biosample_parsed
+```
+
+
+We got it out! Now lets try to put it into a data frame 
+
+#Put the output into a data frame 
+
+
+```{r}
+biosample_df <- as.data.frame(biosample_parsed)
+biosample_df
+```
+
+
+
+```{r}
+lat_long <- biosample_df[4,]
+lat_long
+```
+
+
+This is the specific data that we are interested in. But is all of the 'Attributes' metadata important?
+
+
+```{r}
+#Name a rows vector for the dataframe
+rows <- c("Collection date", "Host", "Geographic location", "Latitude and longitude", "Isolation source")
+rows
+```
+
+
+
+```{r}
+row.names(biosample_df)<- rows
+biosample_df
+
+#column.names(biosample_df)<- 
+#we should try to make the column names the same as the SRA ID that we are first searching with.  
+```
+
+
+
+WE'VE GOT IT! Now to clean it up and use more accessions! The next step is to make sure that nothing is 'hard-coded' so that we can reproduce this search with any ID that we put in.

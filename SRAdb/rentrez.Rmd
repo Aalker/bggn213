@@ -1,0 +1,76 @@
+---
+title: "Rentrez Accession"
+author: "Amanda Alker"
+date: "5/1/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Pull Metadata from SRA Accessions
+
+Download Rentrez package 
+
+```{r}
+#install.packages("rentrez")
+```
+
+
+```{r}
+#load the package
+library(rentrez)
+```
+
+
+Check out the Searchable space...
+
+```{r}
+#Gives the list of availabe databases
+entrez_dbs()
+```
+
+
+
+
+
+```{r}
+#Gives the list of searchable terms within database
+entrez_db_searchable("protein")
+```
+
+
+Pull in data from the 'Baseplate_Accession' and label as object 'accessions'
+
+```{r}
+
+```
+
+
+Perform the 'entrez_fetch' function to get the information. 
+
+#First try
+
+```{r}
+accessions <- read.table("Baseplate_accession.txt")
+#Still need taxonomy ID, scientific name, heirarchical taxonomy 
+rsearch <- entrez_fetch("taxonomy", id = accessions, rettype = "fasta")
+rsearch
+
+
+```
+
+Not exactly what I was going for... What are "\n" separators?
+Why is root an output?
+
+#Second try
+
+```{r}
+#accessions <- read.table("Baseplate_accession.txt")
+#rsearch <- entrez_fetch("protein", id = accessions, rettype = "xml", parsed = TRUE)
+#rsearch
+```
+Error: XML content does not seem to be XML: ' ' 
+
+
