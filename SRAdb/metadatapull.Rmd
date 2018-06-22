@@ -16,6 +16,12 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r}
+install.packages("WriteXLS")
+```
+
+
+
+```{r}
 #load the package
 library(rentrez)
 #This allows you to check out the databases and fields that you want to search
@@ -24,6 +30,8 @@ library(reutils)
 library(XML)
 library(xml2)
 library(rvest)
+library("WriteXLS")
+
 #These will help you parse the output
 ```
 
@@ -175,6 +183,10 @@ row.names(lat_lon_df) <- srr_list$V1
 lat_lon_df
 ```
 
+```{r}
+WriteXLS(lat_lon_df, ExcelFileName =  "latitude_longitude_data.xls", row.names = TRUE)
+#This code writes the dataframe to an excel document for easy copy and pasting
+```
 
 
 Wahoo! We've got it!
