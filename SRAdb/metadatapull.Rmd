@@ -23,6 +23,7 @@ library(reutils)
 #This is where the functions for getting db summaries and crosslinking the IDs are found
 library(XML)
 library(xml2)
+library(rvest)
 #These will help you parse the output
 ```
 
@@ -107,18 +108,18 @@ biosample_uid
 Great! Now let's try to find the summary page of the biosample uid
 
 
-#Fetch the summary data 
+#Find and fetch the data
 
 
 
 ```{r}
-#getNodeSet
 biosample_data <- esummary(biosample_uid, db = "biosample")
 biosample_data
 ```
 
 
-ITS IN THERE! Now we just have to parse it out!
+
+ITS IN THERE! This is the summary data, and in order to further parse out the "Attributes" section, we're going to need to do the full 'efetch'. 
 
 
 
@@ -127,117 +128,56 @@ ITS IN THERE! Now we just have to parse it out!
 
 
 ```{r}
-parsed_biosample_full <- content(biosample_data, "parsed")
-View(parsed_biosample_full)
+biosample_fetched <- efetch(biosample_uid, db = "biosample", retmode = "xml")
+biosample_fetched
+#this code did a good job of retreiving the xml data that could not be parsed out otherwise using different codes I tried. 
+
+#parsed_biosample_fetched <- content(biosample_fetched, "parsed")
+#The code above works, but not as well as the approach seen below.
 ```
 
-
-
-Okay, we're on to something, but it looks like the SampleData column did not parse out all of the way. Let's keep on working on it.
-
+We have the XML, now it's time to retreive the contents out. Unfortunately, whoever input the data for 'Attribute' didnt do a good job of discerning the important information. 
 
 
 ```{r}
-parsed_biosample_sampledata <- parsed_biosample_full$SampleData
-parsed_biosample_sampledata
+attribute_contents <- biosample_fetched$xmlValue("//Attribute")
+attribute_contents
+#Here are the guts of the attribute section
 ```
 
 
-
-
-Looks like it's not going to be the easiest time parsing and orienting the data. I found a tutorial online for this....
-
-
-
-https://www.stat.berkeley.edu/~statcur/Workshop2/Presentations/XML.pdf
-
+Now that we have the values, we need to be able to get out the latitude and longitude only!
 
 
 ```{r}
-#top <- xmlRoot(parsed_biosample_sampledata)
-#top
-#str(parsed_biosample_sampledata)
-```
-
-
-Find the header 
-
-
-```{r}
-#names(top)
-```
-
-
-Give the names of the child nodes of this root
-
-
-```{r}
-#names( top[[1]])
+attribute_df <- data.frame(attribute_contents)
+attribute_df
+#convert the output to a dataframe
 ```
 
 
 ```{r}
-#str( top [[1]])
-```
-
-
-```{r}
-#biosample_attributes <- top[[1]] [["Attributes"]]
-#biosample_attributes
-```
-
-
-
-This is what we are looking for! Except, here is where it is getting a little tricky. I want to be able to specifically take out the latitude and longitude, but it seems that the "Attributes" column is in a weird class of XML that is not as accessible. We may need to get creative as to how we will extract the values. Perhaps a **'grep()'** function?
-
-
-
-It looks like the 'readHTMLList()' function might be able to help us out here.
-
-
-```{r}
-#biosample_parsed <- readHTMLList(biosample_attributes)
-#biosample_parsed
-```
-
-
-We got it out! Now lets try to put it into a data frame 
-
-#Put the output into a data frame 
-
-
-```{r}
-#biosample_df <- as.data.frame(biosample_parsed)
-#biosample_df
+lat_lon <- attribute_df[seq(4, nrow(attribute_df), 5), ]
+lat_lon
+#Extract every 5th row, starting at the 4th position, going up to the number of rows found in the attribute_df
 ```
 
 
 
 ```{r}
-#lat_long <- biosample_df[4,]
-#lat_long
+lat_lon_df <- data.frame(lat_lon)
+lat_lon_df
+#Convert this to a data frame
 ```
-
-
-This is the specific data that we are interested in. But is all of the 'Attributes' metadata important?
-
 
 ```{r}
-#Name a rows vector for the dataframe
-#rows <- c("Collection date", "Host", "Geographic location", "Latitude and longitude", "Isolation source")
-#rows
+row.names(lat_lon_df) <- srr_list$V1
+lat_lon_df
 ```
 
 
 
-```{r}
-#row.names(biosample_df)<- rows
-#biosample_df
-
-#column.names(biosample_df)<- 
-#we should try to make the column names the same as the SRA ID that we are first searching with.  
-```
+Wahoo! We've got it!
 
 
 
-WE'VE GOT IT! Now to clean it up and use more accessions! The next step is to make sure that nothing is 'hard-coded' so that we can reproduce this search with any ID that we put in.
