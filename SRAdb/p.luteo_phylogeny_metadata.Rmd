@@ -1,0 +1,73 @@
+---
+title: "Baseplate Biome by Accession"
+author: "Amanda Alker"
+date: "6/27/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(reutils)
+```
+
+```{r}
+accessions <- read.table("p.luteo_accession_output.txt")
+View(accessions)
+accessions <- accessions$V1
+accessions
+```
+
+```{r}
+uid <- esearch(accessions, db = "protein")
+uid
+```
+
+
+```{r}
+prot_uid <- elink(uid, dbFrom = "protein", dbTo = "nucleotide" )
+prot_uid
+```
+
+```{r}
+nuc_uid <- linkset(prot_uid)
+nuc_uid
+```
+
+
+```{r}
+biosample_uid <- elink(nuc_uid$protein_nuccore_wp, dbFrom = "nucleotide", dbTo = "biosample" )
+biosample_uid
+```
+
+```{r}
+biosample_uid_linked <- linkset(biosample_uid)
+biosample_uid_linked
+```
+
+```{r}
+biosample_data <- esummary(biosample_uid_linked, db = "biosample")
+biosample_data
+```
+
+
+```{r}
+biosample_fetched <- efetch(biosample_uid, db = "biosample", retmode = "xml")
+biosample_fetched
+```
+
+```{r}
+attribute_contents <- biosample_fetched$xmlValue("//Attribute")
+attribute_contents
+#This needs to be parsed out for what we are specifically looking for.
+```
+
+```{r}
+parsed_biosample_data <- content(biosample_data, "parsed")
+biosample_data_df <- data.frame(parsed_biosample_data)
+View(biosample_data_df)
+#This gives a general data frame for all of the information about the specific species we did the phylogeny on. This will be a good starting point for a metadata table 
+```
+
