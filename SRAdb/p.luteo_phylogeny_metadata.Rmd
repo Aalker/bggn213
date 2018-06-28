@@ -11,6 +11,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(reutils)
+library(XML)
+library(xml2)
+library(rvest)
 ```
 
 ```{r}
@@ -27,6 +30,27 @@ uid
 
 
 ```{r}
+tax_uid <- elink(uid, dbFrom = "protein", dbTo = "taxonomy" )
+tax_uid
+```
+
+```{r}
+tax_id <- linkset(tax_uid)
+```
+
+```{r}
+#tx <- efetch(tax_id, "taxonomy", retmode = "xml")
+#tx
+```
+
+```{r}
+#tax_parsed <- content(tx, "parsed")
+#tax_parsed
+```
+
+
+
+```{r}
 prot_uid <- elink(uid, dbFrom = "protein", dbTo = "nucleotide" )
 prot_uid
 ```
@@ -34,6 +58,11 @@ prot_uid
 ```{r}
 nuc_uid <- linkset(prot_uid)
 nuc_uid
+```
+
+```{r}
+taxonomy <- efetch(prot_uid, "taxonomy")
+taxonomy
 ```
 
 
@@ -58,16 +87,39 @@ biosample_fetched <- efetch(biosample_uid, db = "biosample", retmode = "xml")
 biosample_fetched
 ```
 
+
+```{r}
+#biosample_fetched$xmlAttr("//Attribute)
+```
+
+
 ```{r}
 attribute_contents <- biosample_fetched$xmlValue("//Attribute")
 attribute_contents
+#xmlValue(biosample_fetched['//Attribute'][["isolation_source"]])
 #This needs to be parsed out for what we are specifically looking for.
 ```
+
+```{r}
+attribute_df <- data.frame(attribute_contents)
+attribute_df
+#convert the output to a dataframe
+```
+
+```{r}
+lat_lon <- attribute_df[seq(4, nrow(attribute_df), 15), ]
+lat_lon
+```
+
 
 ```{r}
 parsed_biosample_data <- content(biosample_data, "parsed")
 biosample_data_df <- data.frame(parsed_biosample_data)
 View(biosample_data_df)
 #This gives a general data frame for all of the information about the specific species we did the phylogeny on. This will be a good starting point for a metadata table 
+```
+
+```{r}
+
 ```
 
