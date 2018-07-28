@@ -1,0 +1,183 @@
+---
+title: "How to perform Pangenomic Analysis with Anvio"
+author: "Amanda Alker"
+date: "7/26/2018"
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+
+##Set up the Program and download your genomes 
+
+Installing Anvio can be a pain, so see if you can get some help with it. Because it uses an interactive interface, downloading to Anthill may not be an option (regardless, it might be worth trying your luck). Otherwise, if using a Mac, Homebrew installation worked well for me... http://merenlab.org/2016/06/26/installation-v2/
+
+
+```{bash}
+#anvi-self-test --suite mini
+
+
+#This should go through an example analysis and will eventually bring up the interactive interface
+```
+
+
+Once you have Anvio up and running, it is time to gather your genomes for analysis!
+
+For this, go to NCBI Genome database. I searched for *Pseudoalteromonas luteoviolacea* sequenced genomes. https://www.ncbi.nlm.nih.gov/genome/12255?genome_assembly_id=283953
+
+From here, locate the top box that says **All 19 genomes for species** and and click 'Download sequence and annotation from RefSeq'. This will bring you to a very plain webpage that contains the files to be downloaded for each of the strains that you are interested. Each of the links will be a folder which will bring you to different forms of the sequences. It is not a bad idea to also go back to the main genome page and click the **Browse list** link. This will generate a table with all of the samples available. This table can be downloaded to a CSV file by clicking the link in the top right corner.  
+
+
+
+We are interested in the files that are **GCF_########_genomic.fna.gz**
+This is a zipped file (.gz) with the Assembly ID, all genomic information in the form of a nucleotide fasta (.fna). Once downloaded, put them into a folder together using only letters, numbers, and _ (no spaces, dashes, or other special characters). 
+
+
+
+This brings up a good point, take this time to change the file names so that the only periods are associated with file extensions.Once your files are in your data folder, move your folder to the anvio directory (the place where Anvio was downloaded on your computer). 
+
+```{bash}
+#mv -r /path/to/[p.luteo_genomes] /usr/local/Cellar/Anvio/5.1
+
+
+#this uses the move function to move your file (-r) 
+#Anvio was installed in my computer to the second file path, but yours might be different. If you went through the installation step above, it will tell you where it was downloaded. 
+
+```
+
+At this time, you should also set your working directory to the anvio folder 
+
+```{bash}
+#cd /usr/local/Cellar/Anvio/5.1
+
+
+#This utilizes the change directory command. In order to access the anvio commands, you have to be in the same folder as where they are kept 
+```
+
+
+##Pangenomic Analysis
+
+The Anvio website has many different tutorials, features, and references. Follow that! http://merenlab.org/2016/11/08/pangenomics-v2/#summarizing-an-anvio-pan-genome
+
+Okay so we know anvio works, but how about the pangenomic analysis? It's a little different...
+
+```{bash}
+#anvi-self-test --suite pangenomics 
+```
+
+Once this is up and running, now we can really start! 
+
+
+First, go ahead and unzip your genomes 
+
+```{bash}
+#gunzip p.luteo_genomes/*.fna.gz
+
+
+#this uses the gunzip command to unzip .gz files 
+#It also utilizes the * wildcard value, which indicates 'run this command on any file name that ends in .fna.gz'  
+```
+
+Now take a look at one of your files to see what the contig names look like. 
+
+
+```{bash}
+#head p.luteo_genomes/GCF_####.fna
+
+
+#This shows you the first few lines of code for this file
+
+```
+
+If the contig names have any spaces, periods, dashes, or other special characters, we will need to rename them. There is an anvio code for this. If your contigs contain only letters, numbers, and underscores, disregard the code below. 
+
+
+```{bash}
+#for f in p.luteo_genomes/*.fna; do bin/anvi-script-reformat-fasta "$f" -o "$f"_fixed.fa -l 100 --simplify-names; done
+
+
+#This code uses a for loop to perform the code seen after the blue 'do' iteratively over a folder of files. 
+#HEADS UP! Your output files here need to have the (.fa) extension, or else they wont work otherwise.
+#consider using the flag --report-file to get a TAB-delimited file to keep track of the old contig names, and the new ones. For some reason I couldnt get this to work. 
+```
+
+
+Once you have performed 'simplify names', you should have numbered contigs that will allow you to convert your contigs into a database file (.db). This next code might take a coupe-few hours depending on how much computing power you assign/how many genomes you are analyzing. 
+
+
+
+```{bash}
+#for f in p.luteo_genomes/*.fa; do  bin/anvi-script-FASTA-to-contigs-db "$f"; done
+```
+
+
+After running the code above, you should have 3 file types/sample: GCF_####.fa, GCF_####.db, GCF_####-MAP.txt
+
+Next let's run ncbi's COGs to attribute gene call to function. If you havent run this analysis before, use the code below:
+
+```{bash}
+#bin/anvi-setup-ncbi-cogs
+```
+
+
+Next, let's run the NCBI cog gene caller. This analysis might take and hour or so, but not too long comparatively. 
+
+
+```{bash}
+#for f in p.luteo_genomes/*.db; do bin/anvi-run-ncbi-cogs -c "$f" ; done 
+```
+
+
+Now we are finally ready to create an anvio genome storage file for your pangenomic analysis. This requires a single input: a .txt file (created in textedit is fine) that has two columns: name of your strain [tab] file directory(write the file directory with the thought of which directory you will be executing your code from). 
+This is a very simple file, they have an example of one on their website if you are confused. Remember, Anvio hates special characters, so the same goes for your bacterial strain names. 
+
+
+
+```{bash}
+#bin/anvi-gen-genomes-storage -e pluteo_external_genomes.txt -o p.luteo_genomes/pluteo-GENOMES.db
+
+
+#For some reason, you HAVE to end the file output with '-GENOMES.db'.
+```
+
+
+
+Now that our genomes are created into a genome storage file -GENOMES.db, it's time to make the PAN.db file! This analysis took about 4 hours for me. I used the --num-threads 2 function to increase the computing power associated with the analysis. Be careful of this if you are running low on CPUs. 
+
+
+```{bash}
+#bin/anvi-pan-genome -g p.luteo_genomes/pluteo-GENOMES.db --project-name "Pluteo_Pangenome" --output-dir p.luteo_genomes/ --num-threads 2 --minbit 0.5 --mcl-inflation 10 --use-ncbi-blast --overwrite-output-destinations
+
+#I suggest you go and look at the tutorial for this code, they use these parameters and all it's important you know why.
+#I also added the flag --overwrite-output-destinations, because I messed up the code a couple of times and had old files that were hindering my code from running
+```
+
+
+
+....4 hours later......
+You finally have all of the working parts to visualize! -GENOMES.db & -PAN.db. Now lets check this puppy out!
+
+```{bash}
+#bin/anvi-display-pan -p p.luteo_genomes/Pluteo_Pangenome-PAN.db -g p.luteo_genomes/pluteo-GENOMES.db
+```
+
+This command should pull up the interactive interface. All of your genomes should be there and now you can start getting click happy. Feel free to create bins, change colors, and add layers. The world is your oyster. 
+
+When you are finishing up, it's not a bad idea to create a summary page. To do this, you need to interupt the interactive interface **CTRL+C**. 
+
+To get the collection ID type 
+
+```{bash}
+#bin/anvi-script-add-default-collection -p p.luteo_genomes/Pluteo_Pangenome-PAN.db
+```
+
+
+Then to make the summary: 
+
+```{bash}
+#bin/anvi-summarize -p p.luteo_genomes/Pluteo_Pangenome-PAN.db -g p.luteo_genomes/pluteo-GENOMES.db -C DEFAULT -o core_pluteo_summary
+```
+
+
+Voila! There is plenty more to learn about the interface itself and all of the cool features they have, but this will get you up and running. 
+
